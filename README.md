@@ -38,17 +38,17 @@ Trên máy `sender`, chỉnh sửa file `send_mixed_packets.py`:
 
     nano send_mixed_packets.py
 
-![img](0)
+![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image0.png?raw=true)
 
 Sửa giá trị message thành `“ATTT”`:
 
-![img](1)
+![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image1.png?raw=true)
 
 Lưu file và đóng lại, bên máy `receiver`, tiến hành thực thi file `detect_steg_packets.py` để thiết lập kênh lắng nghe gói tin gửi đến:
 
     sudo python3 detect_steg_packets.py
 
-![img](2)
+![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image2.png?raw=true)
 
 Đồng thời, bên máy `sender`, tiến hành thực thi `file send_mixed_packets.py` để gửi gói tin:
 
@@ -56,27 +56,29 @@ Lưu file và đóng lại, bên máy `receiver`, tiến hành thực thi file `
 
 Sau khi bên máy `sender` thông báo gửi xong gói tin, bên máy `receiver` ấn `Ctrl+C` để dừng bắt gói tin. Quy tắc giấu tin cơ bản của kỹ thuật này:
 
-![img](4)
+![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image3.png?raw=true)
+
+![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image4.png?raw=true)
 
 Dựa vào quy tắc này, phân tích logs bên máy `receiver`, tìm ra giá trị bits của thông điệp ẩn. Sau đó, trên máy `sender`, thực thi file `decode_bits.py` để tìm ra nội dung thông điệp:
 
-![img](5)
+![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image5.png?raw=true)
 
 Trên máy `receiver`, mở `Wireshark`:
 
     wireshark &
 
-![img](6)
+![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image6.png?raw=true)
 
 Tiếp theo, bên máy `sender`, thực thi file `send_ttl_win.py`:
 
     sudo python3 send_ttl_win.py
 
-![img](7)
+![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image7.png?raw=true)
 
 Quan sát `Wireshark`: 
 
-![img](8)
+![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image8.png?raw=true)
 
 Phân tích và tìm ra các gói có chứa thông điệp ẩn, sau đó ghép lại tìm ra giá trị bits của thông điệp. Có thể áp dụng bộ lọc để tìm dễ dàng hơn:
 
