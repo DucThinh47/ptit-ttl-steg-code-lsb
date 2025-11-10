@@ -77,17 +77,17 @@ Trên máy receiver, thực hiện đọc file packet_log.txt, tìm ra chuỗi b
 
 ![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image8.png?raw=true)
 
-![img](9)
+![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image9.png?raw=true)
 
 Trên máy receiver, chạy lệnh: 
 
     python3 decode.py
 
-![img](10)
+![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image10.png?raw=true)
 
 Nhập chuỗi bit được lưu trong output.txt:
 
-![img](11)
+![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image11.png?raw=true)
 
 Kết quả là thông điệp ‘PTIT’. 
 
@@ -97,11 +97,11 @@ Trên máy receiver, mở Wireshark:
 
 Thực hiện gửi lại các gói tin từ máy sender: 
 
-![img](12)
+![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image12.png?raw=true)
 
 Quan sát trên wireshark, tìm và nhận dạng các gói có chứa thông điệp bên trong:
 
-![img](13)
+![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image13.png?raw=true)
 
 
 
