@@ -1,93 +1,107 @@
-# Lab: Giấu tin trong mạng sử dụng kỹ thuật điều chỉnh LSB của các trường header TCP
+# Lab: Giấu tin trong mạng sử dụng kỹ thuật điều chỉnh LSB của trường TTL
 ## Lý thuyết
-**1. Lý thuyết "Kênh ẩn" (Covert Channel)**
+**1. Kênh ẩn LSB trên trường TTL (Time-To-Live)**
 
-Lý thuyết cơ bản nhất được thể hiện là việc tạo ra một `kênh ẩn (covert channel)`.
-- `Định nghĩa`: Đây là một kênh giao tiếp bí mật được xây dựng bên trên một kênh giao tiếp hợp lệ. Trong bài lab này, kênh hợp lệ là các `gói tin TCP/IP` thông thường. Kênh ẩn được tạo ra bằng cách điều chỉnh các `trường dữ liệu (metadata)` của kênh hợp lệ đó.
-- `Yêu cầu`: Kỹ thuật này đòi hỏi sự đồng bộ giữa bên gửi và bên nhận. Cả hai bên phải thống nhất trước về một "giao thức" bí mật:
-    - Trường nào được dùng để giấu tin? (Ở đây là `TTL` và `Window Size`).
-    - Quy tắc mã hóa là gì? (Ở đây là quy tắc `LSB`: `TTL=100` nghĩa là `bit 0`, `TTL=101` nghĩa là `bit 1`,...).
-    - Bên nhận (`detect_steg_packets.py`) phải biết chính xác quy tắc này để trích xuất và giải mã (`decode_bits.py`) thông điệp.
-    
-**2. Nguyên tắc "Tối thiểu hóa Bất thường" (Minimizing Anomaly)**
+Đây là kỹ thuật giấu tin cơ bản được sử dụng,tập trung chỉ vào một trường (TTL) và làm rõ hơn về LSB.
+- `Kênh ẩn (Covert Channel)`: Là nguyên tắc cốt lõi, tạo một kênh giao tiếp bí mật.
+- `Trường sử dụng`: `Time-To-Live (TTL)` trong IP Header.
+- `Kỹ thuật mã hóa`: `LSB (Least Significant Bit)`.Việc thay đổi LSB chỉ làm thay đổi giá trị thập phân của số đi 1 đơn vị. 
+    - Ưu điểm: Đây là cách thay đổi giá trị một cách tinh vi nhất, tạo ra sự khác biệt nhỏ nhất và khó bị phát hiện nhất nếu chỉ phân tích giá trị thập phân thông thường.
+    - Để giấu bit 0: Gói tin được gửi với giá trị TTL có LSB là 0 (ví dụ: TTL = 64).
+    - Để giấu bit 1: Gói tin được gửi với giá trị TTL có LSB là 1 (ví dụ: TTL = 65).
 
-Đây là nguyên tắc quan trọng nhất để tránh bị phát hiện. Kẻ giấu tin không chọn các giá trị ngẫu nhiên mà chọn các giá trị tuân thủ giao thức và trông "bình thường".
-- `Sử dụng trường linh hoạt`: Kỹ thuật này nhắm vào các trường trong header (như `TTL` và `Window Size`) có độ linh hoạt tự nhiên.
-    - `TTL (Time-To-Live)`: Giá trị này giảm đi `1` sau mỗi "bước nhảy" (hop) qua router. Giá trị ban đầu (như `64`, `128`, `255`) là phổ biến, nhưng các giá trị như `100`, `101` vẫn hoàn toàn hợp lệ và không gây nghi ngờ ngay lập tức.
-    - `Window Size (WS)`: Trường này dùng để kiểm soát luồng và có thể thay đổi trong suốt phiên kết nối.
-- `Tránh giá trị bất thường`: Bài lab giải thích rõ tại sao chọn `[100, 101]` và `[2048, 2049]`:
-    - Chúng chỉ chênh lệch `1` đơn vị (do thay đổi bit LSB).
-    - Chúng nằm trong dải giá trị hợp lệ (ví dụ: TTL `100/101` gần với `128`; `WS 2048` là một giá trị chuẩn `2^11`).
-    - Nếu chọn các giá trị quá khác biệt (ví dụ: giấu tin bằng cách đặt `TTL=1` hoặc `TTL=500`), các hệ thống giám sát an ninh mạng (như IDS/IPS) hoặc thậm chí chính các router sẽ dễ dàng phát hiện và loại bỏ gói tin.
+**2. Lý thuyết "Chaffing" - Thêm Gói tin Gây nhiễu**
+- `Vấn đề`: Nếu một kẻ tấn công chỉ gửi các gói tin có LSB của TTL được điều khiển (ví dụ: chỉ gửi 64, 65, 64, 65...), luồng lưu lượng này sẽ rất đáng ngờ và dễ bị phát hiện.
+- `Giải pháp (Chaffing)`: Script `send_encoded_2.py` thực hiện "gửi các gói tin bị làm nhiễu". Điều này có nghĩa là nó gửi xen kẽ hai loại gói tin:
+    - `Gói tin ẩn (Stego Packets)`: Gói tin thật sự mang bit 0/1 của thông điệp (ví dụ: TTL=64/65).
+    - `Gói tin mồi (Chaff Packets / Noise)`: Các gói tin hợp lệ, bình thường, được chèn vào không mang thông tin gì cả. Chúng có thể có giá trị TTL ngẫu nhiên hoặc LSB ngẫu nhiên.
+- `Mục đích`: Làm cho việc phát hiện trở nên khó khăn hơn. Thay vì một luồng 100% là gói tin đáng ngờ, kẻ tấn công tạo ra một luồng lưu lượng lớn hơn, trong đó chỉ một phần nhỏ (các gói tin ẩn) là có ý nghĩa. Bên phân tích phải "lọc" nhiễu để tìm ra tín hiệu thật.
 
-**3. Lý thuyết "Mã hóa Bit có trọng số thấp nhất" (LSB Encoding)**
+**3. Nguyên tắc "Kênh ẩn phụ thuộc Độ dài" (Length-Dependent Channel)**
 
-Đây là kỹ thuật mã hóa cụ thể được sử dụng, dựa trên nguyên tắc "Tối thiểu hóa bất thường" ở trên.
-- `LSB (Least Significant Bit)`: Là bit cuối cùng (bên phải nhất) trong biểu diễn nhị phân của một số.
-- `Tại sao dùng LSB?` Việc thay đổi LSB chỉ làm thay đổi giá trị thập phân của số đi `1 đơn vị` (ví dụ: `100 ...0` -> `101 ...1`; `2048 ...0` -> `2049 ...1`).
-- `Ưu điểm`: Đây là cách thay đổi giá trị một cách tinh vi nhất, tạo ra sự khác biệt nhỏ nhất và khó bị phát hiện nhất nếu chỉ phân tích giá trị thập phân thông thường.
+Một đặc điểm quan trọng của giao thức ẩn này.
+- `Tham số Bắt buộc`: Bên nhận `(receive_ttl_steg_1.py)` bắt buộc phải biết trước độ dài của thông điệp `(--chars 10)`.
+- `Ý nghĩa`: Giao thức giấu tin này rất đơn giản. Nó không có cơ chế tự báo hiệu "Kết thúc thông điệp" (End-of-Message / EOM).
+- `Hệ quả`: Bên gửi và bên nhận phải thống nhất (out-of-band) về độ dài tin nhắn trước khi truyền. Nếu bên nhận không biết độ dài, nó sẽ không biết khi nào phải dừng giải mã (hoặc sẽ giải mã sai, thiếu).
 
-**4. Nguyên tắc "Phân mảnh Thông điệp" (Message Fragmentation)**
+**4. Phát hiện dựa trên Phân tích Hậu kỳ (Post-Hoc Analysis)**
 
-Một gói tin TCP đơn lẻ chỉ có thể mang một lượng tin ẩn rất nhỏ.
-- `Một gói = Vài bit`: Trong bài lab này, mỗi gói tin chỉ mang được `2 bit` thông điệp ẩn (1 bit ở trường `TTL` và 1 bit ở trường `Window Size`).
-- `Ghép chuỗi`: Để gửi một thông điệp có ý nghĩa (như `"ATTT"`, tương đương `32 bits`), bên gửi (`send_mixed_packets.py`) phải chia nhỏ thông điệp thành các bit riêng lẻ và gửi chúng đi trong một chuỗi nhiều gói tin.
-- `Bên nhận (receiver)`: Phải bắt, lọc (dùng` Wireshark` hoặc script) và sắp xếp lại các gói tin này theo đúng thứ tự để trích xuất và ghép các bit lại thành thông điệp hoàn chỉnh.
+Bài lab mô tả một quy trình phát hiện và giải mã gồm nhiều bước, thay vì giải mã theo thời gian thực.
+- `Ghi lại (Logging)`: `receive_ttl_steg_2.py` lắng nghe và ghi tất cả các gói tin (cả gói ẩn và gói nhiễu) vào `packet_log.txt`.
+- `Lọc (Filtering)`: Nhiệm vụ của sinh viên là phải phân tích `packet_log.txt` (hoặc Wireshark) để lọc bỏ các gói nhiễu (chaff) và chỉ trích xuất LSB của các gói tin ẩn thật sự.
+- `Giải mã (Decoding)`: Chuỗi bit đã được lọc sạch `(output.txt)` sau đó mới được đưa vào script `decode.py` để chuyển đổi trở lại thành ký tự (ví dụ: `'PTIT'`).
 ## Thực hành
-Trên máy `sender`, chỉnh sửa file `send_mixed_packets.py`:
+Trên máy sender, mở và đọc nội dung file send_encoded_1.py:
 
-    nano send_mixed_packets.py
+    nano send_encoded_1.py
 
 ![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image0.png?raw=true)
 
-Sửa giá trị message thành `“ATTT”`:
+Để ý thông điệp `message=’B21DCAT181’` có 10 kí tự. Bên máy receiver, chạy lệnh sau:
+
+    sudo python3 receive_ttl_steg_1.py --chars 10
 
 ![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image1.png?raw=true)
 
-Lưu file và đóng lại, bên máy `receiver`, tiến hành thực thi file `detect_steg_packets.py` để thiết lập kênh lắng nghe gói tin gửi đến:
+Đồng thời bên máy sender, chạy lệnh sau:
 
-    sudo python3 detect_steg_packets.py
+    sudo python3 send_encoded_1.py
+
+Quan sát cách các gói tin được gửi và nhận:
 
 ![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image2.png?raw=true)
 
-Đồng thời, bên máy `sender`, tiến hành thực thi `file send_mixed_packets.py` để gửi gói tin:
-
-    sudo python3 send_mixed_packets.py
-
-Sau khi bên máy `sender` thông báo gửi xong gói tin, bên máy `receiver` ấn `Ctrl+C` để dừng bắt gói tin. Quy tắc giấu tin cơ bản của kỹ thuật này:
+Tiếp theo, sửa file send_encoded_1.py, gửi và giải mã thông điệp ‘PTIT’:
 
 ![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image3.png?raw=true)
 
+Trên máy receiver, thực hiện lệnh sau để lắng nghe gói tin gửi đến:
+sudo python3 receive_ttl_steg_2.py
+
 ![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image4.png?raw=true)
 
-Dựa vào quy tắc này, phân tích logs bên máy `receiver`, tìm ra giá trị bits của thông điệp ẩn. Sau đó, trên máy `sender`, thực thi file `decode_bits.py` để tìm ra nội dung thông điệp:
+Lúc này trên máy sender, thực thi file send_encoded_2.py:
 
 ![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image5.png?raw=true)
 
-Trên máy `receiver`, mở `Wireshark`:
-
-    wireshark &
+Sau khi chờ máy sender gửi xong, bên máy receiver ấn Ctrl+C để dừng lắng nghe. Kết quả sẽ được lưu vào file packet_log.txt, đọc nội dung file để xem log mạng khi có xuất hiện gói tin có thông điệp ẩn trong thực tế:
+cat packet_log.txt:
 
 ![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image6.png?raw=true)
 
-Tiếp theo, bên máy `sender`, thực thi file `send_ttl_win.py`:
-
-    sudo python3 send_ttl_win.py
+Tiếp theo, chỉnh sửa nội dung thông điệp trong file send_encoded_2.py thành ‘PTIT’, thực hiện gửi lại các gói tin đến máy receiver:
 
 ![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image7.png?raw=true)
 
-Quan sát `Wireshark`: 
+Trên máy receiver, thực hiện đọc file packet_log.txt, tìm ra chuỗi bit của thông điệp ‘PTIT’ và lưu kết quả vào file output.txt: 
 
 ![img](https://github.com/DucThinh47/ptit-ttl-steg-code-lsb/blob/main/images/image8.png?raw=true)
 
-Phân tích và tìm ra các gói có chứa thông điệp ẩn, sau đó ghép lại tìm ra giá trị bits của thông điệp. Có thể áp dụng bộ lọc để tìm dễ dàng hơn:
+![img](9)
 
-    tcp && ip.src == <ip_máy_sender>
+Trên máy receiver, chạy lệnh: 
 
-Sau khi có được giá trị bits của thông điệp ẩn, trên máy `receiver`, thực thi file `decode_bits.py` để tìm ra thông điệp:
+    python3 decode.py
 
-    python3 decode_bits.py
+![img](10)
 
+Nhập chuỗi bit được lưu trong output.txt:
+
+![img](11)
+
+Kết quả là thông điệp ‘PTIT’. 
+
+Trên máy receiver, mở Wireshark:
+
+    wireshark &
+
+Thực hiện gửi lại các gói tin từ máy sender: 
+
+![img](12)
+
+Quan sát trên wireshark, tìm và nhận dạng các gói có chứa thông điệp bên trong:
+
+![img](13)
 
 
 
